@@ -1,0 +1,1 @@
+# Azure-Exemption-policies-for-resources
