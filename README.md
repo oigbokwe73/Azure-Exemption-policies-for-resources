@@ -1,3 +1,58 @@
+
+Here’s a tiny PowerShell helper that converts a **JSON tags object** (e.g. from Azure) into a **Hashtable**.
+
+```powershell
+function Convert-JsonTagsToHashtable {
+  [CmdletBinding(DefaultParameterSetName='FromString')]
+  param(
+    [Parameter(Mandatory=$true, ParameterSetName='FromString', ValueFromPipeline=$true)]
+    [string]$Json,
+
+    [Parameter(Mandatory=$true, ParameterSetName='FromFile')]
+    [string]$Path
+  )
+
+  if ($PSCmdlet.ParameterSetName -eq 'FromFile') {
+    $obj = Get-Content -Raw -Path $Path | ConvertFrom-Json
+  } else {
+    $obj = $Json | ConvertFrom-Json
+  }
+
+  if ($null -eq $obj) { return @{} }
+
+  $ht = @{}
+  foreach ($p in $obj.PSObject.Properties) {
+    $val = $p.Value
+    if ($null -eq $val)       { $ht[$p.Name] = "" }
+    elseif ($val -is [string]){ $ht[$p.Name] = $val }
+    else                      { $ht[$p.Name] = ($val | ConvertTo-Json -Compress) }  # coerce non-strings
+  }
+  return $ht
+}
+```
+
+### Examples
+
+```powershell
+# From a JSON string
+$tags = Convert-JsonTagsToHashtable -Json '{"env":"prod","owner":"obinna","costcenter":"1234"}'
+$tags
+
+# From a file
+$tags = Convert-JsonTagsToHashtable -Path .\tags.json
+$tags
+
+# Pipeline
+Get-Content .\tags.json -Raw | Convert-JsonTagsToHashtable
+```
+
+### Super-simple one-liner (file → Hashtable)
+
+```powershell
+$ht = @{}; (Get-Content .\tags.json -Raw | ConvertFrom-Json).PSObject.Properties |
+  % { $ht[$_.Name] = [string]$_.Value }; $ht
+```
+
 # Azure-Exemption-policies-for-resources
 
 If you have **only** the resource name and subscription ID, you’ll need to also know the resource **type** (and ideally the provider) to get the full Azure Resource ID, because resource names are not globally unique — multiple resources in different resource groups can share the same name.
