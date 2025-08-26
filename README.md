@@ -1,3 +1,52 @@
+
+Here’s a **super-simple PowerShell + Azure CLI** script that hits the **ARM management REST “Tags at scope”** endpoint to **MERGE** (or **REPLACE**) tags on **any scope** (resource, resource group, or subscription).
+
+> Save as `Update-Tags-Simple.ps1`
+
+```powershell
+# ---- Simple: update tags via ARM REST (MERGE by default) ----
+# Optional: Managed Identity login
+# az login --identity           # or: az login --identity --username <client-id-guid>
+
+# SCOPE can be a full resourceId, an RG scope, or a subscription scope:
+#   Resource:      /subscriptions/<sub>/resourceGroups/<rg>/providers/<RP>/<type>/<name>
+#   ResourceGroup: /subscriptions/<sub>/resourceGroups/<rg>
+#   Subscription:  /subscriptions/<sub>
+$SCOPE = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Storage/storageAccounts/<name>"
+
+# Define your tags (or read from a file: $tags = Get-Content .\tags.json -Raw | ConvertFrom-Json)
+$tags = @{
+  env        = "prod"
+  owner      = "obinna"
+  costcenter = "1234"
+}
+
+# Choose MERGE (preserve others) or REPLACE (overwrite all)
+$operation = "Merge"   # or "Replace"
+
+# Build request
+$uri  = "https://management.azure.com$SCOPE/providers/Microsoft.Resources/tags/default?api-version=2021-04-01"
+$body = @{
+  properties = @{
+    operation = $operation
+    tags      = $tags
+  }
+} | ConvertTo-Json -Depth 5
+
+# PATCH tags
+az rest --method patch --uri $uri --headers "Content-Type=application/json" --body $body
+
+# Verify (shows tags object)
+az rest --method get --uri $uri --query properties.tags -o json
+```
+
+### Quick usage
+
+* **MERGE** tags (recommended): just run the script after setting `$SCOPE`, `$tags`, `$operation="Merge"`.
+* **REPLACE** all tags: set `$operation="Replace"` (this overwrites existing tags).
+
+That’s it—clean and tiny.
+
 Here are the **Azure CLI** ways to take **JSON tags** and update a resource’s tags.
 
 ### Option A — Replace all tags with JSON (no merge)
