@@ -1,3 +1,56 @@
+Here you go—two tiny scripts that **validate** whether a resource has tags before listing them. If no tags exist, they print a clear message.
+
+### PowerShell (with Azure CLI)
+
+```powershell
+param(
+  [Parameter(Mandatory=$true)][string]$ResourceId,
+  [switch]$FailIfNoTags  # optional: return non-zero exit if no tags
+)
+
+$ErrorActionPreference = 'Stop'
+
+try {
+  $tagsJson = az resource show --ids $ResourceId --query tags -o json 2>$null
+} catch {
+  Write-Error "Failed to read resource or tags. Check the Resource ID and your permissions."
+  exit 1
+}
+
+if ([string]::IsNullOrWhiteSpace($tagsJson) -or $tagsJson -eq 'null' -or $tagsJson -eq '{}') {
+  Write-Host "No tags found on resource." -ForegroundColor Yellow
+  if ($FailIfNoTags) { exit 2 } else { exit 0 }
+}
+
+# Tags exist → list keys in a table
+az resource show --ids $ResourceId --query "tags | keys(@)[]" -o table
+```
+
+### Bash (with Azure CLI)
+
+```bash
+#!/usr/bin/env bash
+# Usage: ./get-tags.sh "<RESOURCE_ID>"
+set -euo pipefail
+
+RESOURCE_ID="${1:?Usage: $0 <RESOURCE_ID>}"
+
+tags_json="$(az resource show --ids "$RESOURCE_ID" --query tags -o json 2>/dev/null || true)"
+
+if [[ -z "$tags_json" || "$tags_json" == "null" || "$tags_json" == "{}" ]]; then
+  echo "No tags found on resource."
+  exit 0
+fi
+
+# Tags exist → list keys in a table
+az resource show --ids "$RESOURCE_ID" --query "tags | keys(@)[]" -o table
+```
+
+> Tip: If you’re running this on a VM/VMSS/App Service with a Managed Identity, log in first:
+>
+> ```bash
+> az login --identity    # or: az login --identity --username <client-id-guid>
+> ```
 
 Here’s a **super-simple PowerShell + Azure CLI** script that hits the **ARM management REST “Tags at scope”** endpoint to **MERGE** (or **REPLACE**) tags on **any scope** (resource, resource group, or subscription).
 
