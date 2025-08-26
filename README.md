@@ -1,3 +1,55 @@
+Here are the **Azure CLI** ways to take **JSON tags** and update a resource’s tags.
+
+### Option A — Replace all tags with JSON (no merge)
+
+From a file:
+
+```bash
+# tags.json => {"env":"prod","owner":"obinna","costcenter":"1234"}
+az resource update --ids "<RESOURCE_ID>" --set tags=@tags.json
+# or
+az resource update -g "<RG>" -n "<NAME>" -r "Microsoft.Storage/storageAccounts" --set tags=@tags.json
+```
+
+Inline JSON:
+
+```bash
+az resource update --ids "<RESOURCE_ID>" --set tags='{"env":"prod","owner":"obinna"}'
+```
+
+---
+
+### Option B — Merge JSON into existing tags (incremental)
+
+**Bash + jq**:
+
+```bash
+# Merge keys from tags.json without removing other existing tags
+az resource tag --ids "<RESOURCE_ID>" --is-incremental --tags $(jq -r 'to_entries|.[]|"\(.key)=\(.value|tostring)"' tags.json)
+```
+
+**PowerShell (no jq)**:
+
+```powershell
+$tags = Get-Content .\tags.json -Raw | ConvertFrom-Json
+$kv = @(); $tags.psobject.Properties | ForEach-Object { $kv += "$($_.Name)=$($_.Value)" }
+az resource tag --ids "<RESOURCE_ID>" --is-incremental --tags $kv
+```
+
+---
+
+### (Optional) Managed Identity login first
+
+```bash
+az login --identity                     # system-assigned
+# az login --identity --username <client-id-guid>   # user-assigned
+```
+
+Tip: verify after:
+
+```bash
+az resource show --ids "<RESOURCE_ID>" --query tags -o json
+```
 
 Here’s a tiny PowerShell helper that converts a **JSON tags object** (e.g. from Azure) into a **Hashtable**.
 
