@@ -1,3 +1,75 @@
+
+
+
+Here are two **super-simple** loops that iterate over Azure **resource IDs** and let you run any action per-ID.
+
+### PowerShell (Azure CLI)
+
+```powershell
+param(
+  [Parameter(Mandatory=$true)][string]$ResourceGroup,
+  [string]$ResourceType  # e.g. "Microsoft.Web/sites" (optional)
+)
+
+# (Optional) Managed Identity login:
+# az login --identity  # or: az login --identity --username <client-id-guid>
+
+# Get IDs in the RG (optionally filter by type)
+$ids = if ($ResourceType) {
+  az resource list -g $ResourceGroup -r $ResourceType --query "[].id" -o tsv
+} else {
+  az resource list -g $ResourceGroup --query "[].id" -o tsv
+}
+
+# Iterate each resource ID
+$ids -split "`n" | ForEach-Object {
+  $id = $_.Trim()
+  if (-not $id) { return }
+  Write-Host "Processing: $id" -ForegroundColor Cyan
+
+  # ---- Your per-resource action goes here ----
+  # Example: print the name and type
+  az resource show --ids $id --query "{name:name,type:type}" -o table
+
+  # Example (merge a tag):
+  # az resource tag --ids $id --is-incremental --tags scanned=true
+}
+```
+
+### Bash (Azure CLI)
+
+```bash
+#!/usr/bin/env bash
+# Usage: ./iterate-ids.sh <resource-group> [resource-type]
+set -euo pipefail
+
+RG="${1:?Usage: $0 <resource-group> [resource-type]}"
+TYPE="${2:-}"
+
+# (Optional) Managed Identity login:
+# az login --identity  # or: az login --identity --username <client-id-guid>
+
+if [[ -n "$TYPE" ]]; then
+  IDS=$(az resource list -g "$RG" -r "$TYPE" --query "[].id" -o tsv)
+else
+  IDS=$(az resource list -g "$RG" --query "[].id" -o tsv)
+fi
+
+# Iterate each resource ID
+while IFS= read -r id; do
+  [[ -z "$id" ]] && continue
+  echo "Processing: $id"
+
+  # ---- Your per-resource action goes here ----
+  # Example: show name and type
+  az resource show --ids "$id" --query "{name:name,type:type}" -o table
+
+  # Example (merge a tag):
+  # az resource tag --ids "$id" --is-incremental --tags scanned=true
+done <<< "$IDS"
+```
+
+Drop in your per-resource action where indicated (e.g., tagging, policy checks, exports).
 Here you go—two tiny scripts that **validate** whether a resource has tags before listing them. If no tags exist, they print a clear message.
 
 ### PowerShell (with Azure CLI)
