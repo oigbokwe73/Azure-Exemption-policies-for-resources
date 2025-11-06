@@ -20,7 +20,7 @@ flowchart TD
         B1[Evaluate Resources<br/>against Policy Rules]
         B2[Detect Non-Compliant Resources]
         B3[Generate Compliance Reports<br/>in Defender for Cloud Dashboard]
-        B4[Trigger Policy Effect<br/>(Audit / Deny / DeployIfNotExists)]
+        B4[Trigger Policy Effect<br/>Audit / Deny / DeployIfNotExists]
     end
 
     subgraph Remediation["🛠️ Policy Remediation Process"]
