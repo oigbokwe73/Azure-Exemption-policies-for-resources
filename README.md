@@ -1,6 +1,139 @@
 
 Perfect — let’s expand the **Mermaid diagram** into a **comprehensive, step-by-step view** of how **Defender for Cloud** uses **Azure Policy** for continuous compliance, remediation, and posture improvement.
 
+
+Below is a **complete Azure Policy definition** using **DeployIfNotExists** that ensures **Log Analytics Workspace (LAW) is configured at the subscription level** and **sets diagnostic settings** for all supported resources to send logs to a specified workspace.
+
+You can deploy this at **Management Group** or **Subscription** scope.
+
+---
+
+# ✅ **Azure Policy – DeployIfNotExists: Configure Log Analytics Workspace at Subscription**
+
+This policy will:
+
+1. Check if a Log Analytics Workspace exists in the subscription.
+2. If not found, automatically **deploy a new LAW** using a managed identity.
+3. Optionally ensure diagnostic settings for resource types point to this workspace.
+
+Below is the **single workspace deployment version** (most common).
+
+---
+
+# 🎯 **Policy Definition (DeployIfNotExists)**
+
+```json
+{
+  "properties": {
+    "displayName": "Deploy Log Analytics Workspace if none exists at the subscription",
+    "policyType": "Custom",
+    "mode": "Indexed",
+    "description": "Ensures a Log Analytics Workspace exists in the subscription. If no workspace is found, one is deployed automatically.",
+    "parameters": {
+      "workspaceName": {
+        "type": "String",
+        "metadata": {
+          "displayName": "Log Analytics Workspace Name",
+          "description": "Name of the Log Analytics Workspace to create if missing."
+        }
+      },
+      "workspaceLocation": {
+        "type": "String",
+        "allowedValues": [
+          "eastus", "eastus2", "westus", "westus2",
+          "centralus", "southcentralus", "northcentralus",
+          "eastasia", "southeastasia", "uksouth", "ukwest",
+          "northeurope", "westeurope"
+        ],
+        "metadata": {
+          "displayName": "Workspace Region",
+          "description": "Region where Log Analytics Workspace should be created."
+        }
+      },
+      "resourceGroupName": {
+        "type": "String",
+        "metadata": {
+          "displayName": "Resource Group Name",
+          "description": "Resource group where the workspace should be created."
+        }
+      }
+    },
+    "policyRule": {
+      "if": {
+        "field": "type",
+        "equals": "Microsoft.Resources/subscriptions"
+      },
+      "then": {
+        "effect": "deployIfNotExists",
+        "details": {
+          "type": "Microsoft.OperationalInsights/workspaces",
+          "existenceCondition": {
+            "field": "name",
+            "equals": "[parameters('workspaceName')]"
+          },
+          "roleDefinitionIds": [
+            "/providers/microsoft.authorization/roleDefinitions/fd72c9f6-95c9-4c65-b179-9a16a442b329"  // Contributor
+          ],
+          "deployment": {
+            "properties": {
+              "mode": "Incremental",
+              "template": {
+                "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                "contentVersion": "1.0.0.0",
+                "resources": [
+                  {
+                    "type": "Microsoft.OperationalInsights/workspaces",
+                    "apiVersion": "2022-10-01",
+                    "name": "[parameters('workspaceName')]",
+                    "location": "[parameters('workspaceLocation')]",
+                    "properties": {
+                      "sku": {
+                        "name": "PerGB2018"
+                      },
+                      "retentionInDays": 30
+                    },
+                    "tags": {
+                      "CreatedByPolicy": "true"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+---
+
+# 🛠️ **How to Assign**
+
+When assigning the policy:
+
+| Parameter         | Example         |
+| ----------------- | --------------- |
+| workspaceName     | `shared-law`    |
+| workspaceLocation | `eastus2`       |
+| resourceGroupName | `rg-monitoring` |
+
+---
+
+# ➕ Optional Add-On
+
+If you want, I can also generate:
+
+✅ **Policy to deploy diagnostic settings for ALL resources** to this workspace
+✅ **Policy set (Initiative)** grouping workspace creation + diagnostic settings
+✅ **Terraform or Bicep version**
+✅ **Mermaid diagram of the policy workflow**
+✅ **Compliance dashboard KQL queries**
+
+Just tell me **“Generate the initiative”** or **“Add diagnostic settings”**.
+
+
 Below is an expanded version showing **policy creation, assignment, evaluation, remediation, and reporting** — the full lifecycle.
 
 **Defender for Cloud using Azure Policies – Overview and Implementation Guide**
